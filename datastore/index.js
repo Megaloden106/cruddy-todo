@@ -3,56 +3,69 @@ const path = require('path');
 const _ = require('underscore');
 const counter = require('./counter');
 
+const Promise = require('bluebird');
+const readFilePromise = Promise.promisify(fs.readFile);
+
 // var items = {};
 
 // Public API - Fix these CRUD functions ///////////////////////////////////////
 
 exports.create = (text, callback) => {
   counter.getNextUniqueId((err, id) => {
-    fs.writeFile(exports.dataDir + '/' + id + '.txt', text, (err) => {
-      err ? callback(err, null) : callback(null, {id: id, text: text});
+    let filepath = path.join(exports.dataDir, `${id}.txt`);
+    fs.writeFile(filepath, text, (err) => {
+      err ? callback(err, null) : callback(null, {id, text});
     });
-  });
-};
-
-exports.readOne = (id, callback) => {
-  fs.readFile(exports.dataDir + '/' + id + '.txt', (err, fileData) => {
-    err ? callback(err, null) : callback(null, {id: id, text: String(fileData)});
   });
 };
 
 exports.readAll = (callback) => {
   fs.readdir(exports.dataDir, (err, files) => {
-    var data = [];
-    _.each(files, (file) => {
-      data.push({
-        id: file.replace('.txt', ''),
-        text: file.replace('.txt', '')
+    var data = _.map(files, (file) => {
+      let id = path.basename(file, '.txt');
+      let filepath = path.join(exports.dataDir, file);
+      return readFilePromise(filepath).then((fileData) => {
+        return {
+          id,
+          text: fileData.toString()
+        };
       });
     });
-    callback(null, data);
-  })
+    Promise.all(data)
+      .then((items) => {
+        callback(null, items);
+      });
+  });
+};
+
+exports.readOne = (id, callback) => {
+  let filepath = path.join(exports.dataDir, `${id}.txt`);
+  fs.readFile(filepath, (err, fileData) => {
+    err ? callback(err, null) : callback(null, {id, text: fileData.toString()});
+  });
 };
 
 exports.update = (id, text, callback) => {
-  fs.readFile(`${exports.dataDir}/${id}.txt`, (err, fileData) => {
+  let filepath = path.join(exports.dataDir, `${id}.txt`);
+  fs.readFile(filepath, (err, fileData) => {
     if (err) {
       callback(err, null);
     } else {
-      fs.writeFile(`${exports.dataDir}/${id}.txt`, text, (err) => {
-        err ? callback(err, null) : callback(null, {id: id, text: text});
+      fs.writeFile(filepath, text, (err) => {
+        err ? callback(err, null) : callback(null, {id, text});
       });
     }
   });
 };
 
 exports.delete = (id, callback) => {
-  fs.readFile(`${exports.dataDir}/${id}.txt`, (err, fileData) => {
+  let filepath = path.join(exports.dataDir, `${id}.txt`);
+  fs.readFile(filepath, (err, fileData) => {
     if (err) {
-      callback(err, null);
+      callback(err);
     } else {
-      fs.unlink(`${exports.dataDir}/${id}.txt`, (err) => {
-        err ? callback(err, null) : callback(null, null);
+      fs.unlink(filepath, (err) => {
+        err ? callback(err) : callback(null);
       });
     }
   });
