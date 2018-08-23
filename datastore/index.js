@@ -8,9 +8,18 @@ var items = {};
 // Public API - Fix these CRUD functions ///////////////////////////////////////
 
 exports.create = (text, callback) => {
-  var id = counter.getNextUniqueId();
-  items[id] = text;
-  callback(null, {id: id, text: text});
+  counter.getNextUniqueId((err, id) => {
+    // console.log('create: '+id)
+    fs.writeFile(exports.dataDir + '/' + id + '.txt', text, (err) => {
+      if (err) {
+        throw ('error writing file');
+      } else {
+        // console.log('-----wrote "'+text+'" in ' + exports.dataDir + '/' + id + '.txt')
+        items[id] = text;
+        callback(null, {id: id, text: text});
+      }
+    });
+  });
 };
 
 exports.readOne = (id, callback) => {
@@ -50,6 +59,10 @@ exports.delete = (id, callback) => {
     callback();
   }
 };
+
+
+
+
 
 // Config+Initialization code -- DO NOT MODIFY /////////////////////////////////
 
