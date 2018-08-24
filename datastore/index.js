@@ -4,19 +4,19 @@ const _ = require('underscore');
 const counter = require('./counter');
 
 const Promise = require('bluebird');
-const readFilePromise = Promise.promisify(fs.readFile);
+Promise.promisifyAll(fs);
 
-// var items = {};
+const getNextUniqueIdAsync = Promise.promisify(counter.getNextUniqueId);
 
 // Public API - Fix these CRUD functions ///////////////////////////////////////
 
 exports.create = (text, callback) => {
-  counter.getNextUniqueId((err, id) => {
-    let filepath = path.join(exports.dataDir, `${id}.txt`);
-    fs.writeFile(filepath, text, (err) => {
-      err ? callback(err, null) : callback(null, {id, text});
+  getNextUniqueIdAsync()
+    .then((id) => {
+      let filepath = path.join(exports.dataDir, `${id}.txt`);
+      fs.writeFileAsync(filepath, text)
+        .then(() => callback(null, {id, text}));
     });
-  });
 };
 
 exports.readAll = (callback) => {
@@ -24,7 +24,7 @@ exports.readAll = (callback) => {
     var data = _.map(files, (file) => {
       let id = path.basename(file, '.txt');
       let filepath = path.join(exports.dataDir, file);
-      return readFilePromise(filepath).then((fileData) => {
+      return fs.readFileAsync(filepath).then((fileData) => {
         return {
           id,
           text: fileData.toString()
@@ -71,10 +71,6 @@ exports.delete = (id, callback) => {
   });
 
 };
-
-
-
-
 
 // Config+Initialization code -- DO NOT MODIFY /////////////////////////////////
 
